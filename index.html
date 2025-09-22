@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Absensi</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <!-- Leaflet JS & CSS for Maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    
+    <!-- Chart.js for Charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+
+    <style id="theme-style">
+        :root {
+            --primary-color: #3b82f6; /* blue-500 */
+            --primary-hover-color: #2563eb; /* blue-600 */
+            --primary-active-color: #1d4ed8; /* blue-700 */
+        }
+        /* Custom Styles */
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .sidebar-item:hover {
+            background-color: var(--primary-hover-color);
+        }
+        .sidebar-item.active {
+            background-color: var(--primary-active-color);
+            font-weight: 600;
+        }
+        .btn-primary {
+            background-color: var(--primary-color);
+        }
+        .btn-primary:hover {
+            background-color: var(--primary-hover-color);
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+        /* Leaflet popup customization */
+        .custom-popup .leaflet-popup-content-wrapper {
+            background: #ffffff; color: #333; border-radius: 8px; box-shadow: 0 3px 14px rgba(0,0,0,0.4);
+        }
+        .custom-popup .leaflet-popup-tip { background: #ffffff; }
+        /* Animasi */
+        .fade-in { animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <!-- ===== LOGIN PAGE ===== -->
+    <div id="login-page" class="flex items-center justify-center min-h-screen">
+        <div class="w-full max-w-md p-8 space-y-6 bg-white rounded-xl shadow-lg m-4">
+            <div class="text-center">
+                <img id="login-logo" src="https://i.ibb.co/fY7vSPWY/images-1.png" alt="Logo" class="mx-auto mb-4" onerror="this.src='https://placehold.co/150x50/3498db/ffffff?text=Logo'">
+                <h1 id="login-app-name" class="text-3xl font-bold text-gray-800">Selamat Datang</h1>
+                <p class="text-gray-500">Silakan login untuk melanjutkan</p>
+            </div>
+            <form id="login-form" class="space-y-4">
+                <div>
+                    <label for="email" class="text-sm font-medium text-gray-700">Email</label>
+                    <input type="email" id="email" name="email" required class="w-full px-4 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="user@contoh.com">
+                </div>
+                <div>
+                    <label for="password" class="text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="password" name="password" required class="w-full px-4 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500" placeholder="••••••••">
+                </div>
+                <div>
+                    <label for="office-location" class="text-sm font-medium text-gray-700">Pilih Lokasi Kantor</label>
+                    <select id="office-location" name="officeLocation" required class="w-full px-4 py-2 mt-1 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+                        <option value="">Memuat lokasi...</option>
+                    </select>
+                </div>
+                <button type="submit" class="w-full px-4 py-2 font-semibold text-white btn-primary rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-transform transform hover:scale-105">
+                    Login
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ===== DASHBOARD PAGE ===== -->
+    <div id="dashboard-page" class="hidden">
+        <div class="relative min-h-screen md:flex">
+            <!-- Mobile Menu Overlay -->
+            <div id="menu-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-20 hidden md:hidden"></div>
+
+            <!-- Sidebar -->
+            <aside id="sidebar" class="w-64 bg-gray-800 text-white flex-shrink-0 flex flex-col fixed inset-y-0 left-0 transform -translate-x-full md:relative md:translate-x-0 transition-transform duration-200 ease-in-out z-30">
+                <div class="h-16 flex items-center justify-center px-4 border-b border-gray-700">
+                    <img id="dashboard-logo" src="https://i.ibb.co/fY7vSPWY/images-1.png" alt="Logo" class="max-h-12" onerror="this.src='https://placehold.co/150x50/3498db/ffffff?text=Logo'">
+                </div>
+                <nav class="flex-1 overflow-y-auto">
+                    <a href="#home" class="sidebar-item active flex items-center px-6 py-3" data-view="home-view">
+                        <i class="fas fa-home w-6"></i><span>Dashboard</span>
+                    </a>
+                    <div id="user-menu">
+                        <a href="#users" class="sidebar-item flex items-center px-6 py-3" data-view="users-view">
+                            <i class="fas fa-users-cog w-6"></i><span>Manajemen User</span>
+                        </a>
+                        <a href="#attendance-data" class="sidebar-item flex items-center px-6 py-3" data-view="attendance-data-view">
+                           <i class="fas fa-file-alt w-6"></i><span>Data Absensi</span>
+                        </a>
+                         <a href="#employee-locations" class="sidebar-item flex items-center px-6 py-3" data-view="employee-locations-view">
+                           <i class="fas fa-map-marked-alt w-6"></i><span>Lokasi Karyawan</span>
+                        </a>
+                    </div>
+                    <div id="admin-menu">
+                        <a href="#settings" class="sidebar-item flex items-center px-6 py-3" data-view="settings-view">
+                            <i class="fas fa-cog w-6"></i><span>Pengaturan</span>
+                        </a>
+                        <a href="#spoof-logs" class="sidebar-item flex items-center px-6 py-3" data-view="spoof-log-view">
+                           <i class="fas fa-shield-alt w-6"></i><span>Log GPS Spoof</span>
+                        </a>
+                    </div>
+                </nav>
+                 <div class="p-4 border-t border-gray-700">
+                    <p class="text-sm font-semibold" id="user-name-display"></p>
+                    <p class="text-xs text-gray-400" id="user-role-display"></p>
+                    <button id="logout-btn" class="w-full mt-4 px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded-lg hover:bg-red-700 focus:outline-none">
+                        <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                    </button>
+                </div>
+            </aside>
+
+            <!-- Main Content -->
+            <div class="flex-1 flex flex-col overflow-hidden">
+                <header class="h-16 bg-white shadow-md flex items-center justify-between px-6">
+                    <button id="menu-btn" class="text-gray-500 focus:outline-none md:hidden">
+                        <i class="fas fa-bars text-xl"></i>
+                    </button>
+                    <h1 class="text-xl font-semibold text-gray-800" id="dashboard-app-name">Dashboard Absensi</h1>
+                     <div class="text-right">
+                        <p id="current-time" class="font-semibold text-gray-700"></p>
+                        <p id="current-date" class="text-sm text-gray-500"></p>
+                    </div>
+                </header>
+                
+                <main class="flex-1 p-4 md:p-6 overflow-y-auto bg-gray-100">
+                    <!-- Home View -->
+                    <div id="home-view" class="content-view fade-in">
+                        <div id="attendance-status-alert" class="hidden p-4 mb-4 text-sm rounded-lg" role="alert"></div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                            <div class="bg-white p-6 rounded-xl shadow-lg">
+                                <h2 class="text-lg font-semibold mb-4">Absen Hari Ini</h2>
+                                <p class="text-gray-600 mb-4">Lokasi: <span id="current-office-location" class="font-semibold"></span></p>
+                                <div class="flex space-x-4">
+                                    <button id="check-in-btn" class="flex-1 bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 transition-transform transform hover:scale-105">
+                                        <i class="fas fa-sign-in-alt mr-2"></i>Absen Masuk
+                                    </button>
+                                    <button id="check-out-btn" class="flex-1 bg-red-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-600 transition-transform transform hover:scale-105">
+                                        <i class="fas fa-sign-out-alt mr-2"></i>Absen Keluar
+                                    </button>
+                                </div>
+                                <div id="last-attendance-info" class="mt-4 text-sm text-gray-500"></div>
+                            </div>
+                            <div class="bg-white p-6 rounded-xl shadow-lg">
+                                <h2 class="text-lg font-semibold mb-2">Status Lokasi</h2>
+                                <p id="location-status" class="text-gray-600">Mendeteksi lokasi...</p>
+                                <p id="distance-info" class="text-sm text-gray-500"></p>
+                            </div>
+                        </div>
+
+                        <!-- Dashboard Maps & Charts -->
+                        <div class="bg-white p-6 rounded-xl shadow-lg">
+                             <h2 class="text-lg font-semibold mb-4">Peta dan Rekap Absensi</h2>
+                             <div class="flex flex-col lg:flex-row gap-6">
+                                 <div class="w-full lg:w-2/3 h-96" id="map"></div>
+                                 <div class="w-full lg:w-1/3">
+                                     <canvas id="attendanceChart"></canvas>
+                                 </div>
+                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Views -->
+                    <div id="users-view" class="content-view fade-in hidden"></div>
+                    <div id="attendance-data-view" class="content-view fade-in hidden"></div>
+                    <div id="settings-view" class="content-view fade-in hidden"></div>
+                    <div id="spoof-log-view" class="content-view fade-in hidden"></div>
+                    <div id="employee-locations-view" class="content-view fade-in hidden"></div>
+                </main>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MODALS ===== -->
+    <div id="loader-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-[1003]">
+        <div class="flex flex-col items-center">
+            <div class="loader ease-linear rounded-full border-8 border-t-8 border-gray-200 h-24 w-24 mb-4 animate-spin" style="border-top-color: var(--primary-color);"></div>
+            <p id="loader-text" class="text-white text-lg font-semibold">Memproses...</p>
+        </div>
+    </div>
+    <div id="notification-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[1002]">
+        <div class="bg-white rounded-lg shadow-xl p-6 m-4 max-w-sm w-full text-center">
+            <div id="notification-icon" class="mx-auto mb-4 w-12 h-12 rounded-full flex items-center justify-center text-2xl text-white"></div>
+            <h3 id="notification-title" class="text-xl font-bold mb-2"></h3>
+            <p id="notification-message" class="text-gray-600 mb-6"></p>
+            <div id="notification-buttons" class="flex gap-4">
+                 <button id="notification-close-btn" class="w-full text-white py-2 px-4 rounded-lg btn-primary">Tutup</button>
+            </div>
+        </div>
+    </div>
+    <div id="selfie-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-[1001] p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg flex flex-col overflow-hidden" style="max-height: 90vh;">
+            <h3 class="text-xl font-bold p-6 pb-4 text-center">Ambil Foto Selfie</h3>
+            <div class="flex-grow overflow-y-auto px-6">
+                <video id="video-preview" class="w-full rounded-lg bg-gray-200" autoplay playsinline></video>
+                <canvas id="selfie-canvas" class="hidden"></canvas>
+            </div>
+            <div class="p-6 pt-4 bg-gray-50 flex space-x-4">
+                <button id="capture-btn" class="flex-1 text-white font-bold py-3 px-4 rounded-lg btn-primary">Ambil Foto</button>
+                <button id="cancel-capture-btn" class="flex-1 bg-gray-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-600">Batal</button>
+            </div>
+        </div>
+    </div>
+    <div id="user-form-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-50 flex items-center justify-center z-[1000]">
+        <div class="bg-white rounded-lg shadow-xl p-6 m-4 max-w-lg w-full">
+            <h3 id="user-form-title" class="text-xl font-bold mb-4">Form User</h3>
+            <form id="user-form">
+                <input type="hidden" id="original-email" name="originalEmail">
+                <div class="space-y-4">
+                    <div>
+                        <label for="user-nama" class="block text-sm font-medium text-gray-700">Nama Lengkap</label>
+                        <input type="text" id="user-nama" name="nama" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label for="user-email" class="block text-sm font-medium text-gray-700">Email</label>
+                        <input type="email" id="user-email" name="email" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    </div>
+                    <div>
+                        <label for="user-password" class="block text-sm font-medium text-gray-700">Password</label>
+                        <input type="password" id="user-password" name="password" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <p class="text-xs text-gray-500 mt-1">Isi untuk mengatur password baru. Biarkan kosong jika tidak ingin mengubah.</p>
+                    </div>
+                    <div>
+                        <label for="user-role" class="block text-sm font-medium text-gray-700">Role</label>
+                        <select id="user-role" name="role" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                            <option value="User">User</option>
+                            <option value="HR">HR</option>
+                            <option value="Admin">Admin</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end space-x-3">
+                    <button type="button" id="cancel-user-form-btn" class="bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300">Batal</button>
+                    <button type="submit" class="text-white py-2 px-4 rounded-lg btn-primary">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+<script type="module">
+// ================================================================= //
+//         APLIKASI ABSENSI - JAVASCRIPT FRONTEND LOGIC V2.1         //
+// ================================================================= //
+
+// --- KONFIGURASI ---
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbz1FNRMQTsr_OoNi9F2BKJKV7neg0BsBY53DDmsJ26Rj9MRSQF0axB3h3pDmGaFrsDn/exec';
+
+// --- ELEMENT SELECTORS ---
+const loginPage = document.getElementById('login-page');
+const dashboardPage = document.getElementById('dashboard-page');
+const loginForm = document.getElementById('login-form');
+
+// --- STATE MANAGEMENT ---
+let currentUser = null;
+let appSettings = null;
+let officeLocations = [];
+let selectedOffice = null;
+let attendanceData = [];
+let map = null;
+let employeeMap = null;
+let attendanceChart = null;
+let lastPosition = null;
+
+// --- INITIALIZATION ---
+document.addEventListener('DOMContentLoaded', () => {
+    checkSession();
+    setupEventListeners();
+    updateTime();
+    setInterval(updateTime, 1000);
+});
+
+async function checkSession() {
+    const user = sessionStorage.getItem('currentUser');
+    const office = sessionStorage.getItem('selectedOffice');
+    const storedTheme = localStorage.getItem('appTheme') || 'blue';
+    applyTheme(storedTheme);
+    if (user && office) {
+        currentUser = JSON.parse(user);
+        selectedOffice = JSON.parse(office);
+        initDashboard();
+    } else {
+        initLoginPage();
+    }
+}
+
+async function initLoginPage() {
+    showLoader('Memuat data...');
+    try {
+        const [settings, offices] = await Promise.all([
+            apiCall({ action: 'getSettings' }),
+            apiCall({ action: 'getOffices' })
+        ]);
+        appSettings = settings;
+        officeLocations = offices;
+        applyTheme(settings.themeColor || 'blue');
+        localStorage.setItem('appTheme', settings.themeColor || 'blue');
+        document.getElementById('login-logo').src = settings.logoUrl;
+        document.getElementById('login-app-name').textContent = `Selamat Datang di ${settings.appName}`;
+        document.title = settings.appName;
+        const officeSelect = document.getElementById('office-location');
+        officeSelect.innerHTML = '<option value="">-- Pilih Lokasi --</option>';
+        offices.forEach(o => {
+            const option = document.createElement('option');
+            option.value = o.nama;
+            option.textContent = o.nama;
+            officeSelect.appendChild(option);
+        });
+    } catch (error) {
+        console.error("Error initializing login page:", error);
+        showNotification('error', 'Gagal Memuat', 'Tidak dapat terhubung ke server. Pastikan URL GAS_URL sudah benar.');
+    } finally {
+        hideLoader();
+    }
+}
+
+function setupEventListeners() {
+    loginForm.addEventListener('submit', handleLogin);
+    document.getElementById('logout-btn').addEventListener('click', handleLogout);
+    const menuBtn = document.getElementById('menu-btn');
+    const sidebar = document.getElementById('sidebar');
+    const menuOverlay = document.getElementById('menu-overlay');
+    menuBtn.addEventListener('click', () => {
+        sidebar.classList.toggle('-translate-x-full');
+        menuOverlay.classList.toggle('hidden');
+    });
+    menuOverlay.addEventListener('click', () => {
+        sidebar.classList.add('-translate-x-full');
+        menuOverlay.classList.add('hidden');
+    });
+    document.querySelectorAll('.sidebar-item').forEach(item => {
+        item.addEventListener('click', (e) => {
+            e.preventDefault();
+            const viewId = e.currentTarget.dataset.view;
+            showView(viewId);
+            document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+            e.currentTarget.classList.add('active');
+            if (window.innerWidth < 768) {
+                sidebar.classList.add('-translate-x-full');
+                menuOverlay.classList.add('hidden');
+            }
+        });
+    });
+    document.getElementById('check-in-btn').addEventListener('click', () => handleAttendance('Masuk'));
+    document.getElementById('check-out-btn').addEventListener('click', () => handleAttendance('Keluar'));
+    document.getElementById('capture-btn').addEventListener('click', captureSelfie);
+    document.getElementById('cancel-capture-btn').addEventListener('click', cancelCapture);
+    document.getElementById('user-form').addEventListener('submit', handleUserFormSubmit);
+    document.getElementById('cancel-user-form-btn').addEventListener('click', () => document.getElementById('user-form-modal').classList.add('hidden'));
+}
+
+// --- API HELPER ---
+async function apiCall(body) {
+    try {
+        const response = await fetch(GAS_URL, {
+            method: 'POST',
+            redirect: 'follow',
+            body: JSON.stringify(body),
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const result = await response.json();
+        if (result.status === 'error') throw new Error(result.message);
+        return result.data;
+    } catch (error) {
+        console.error('API Call Error:', error);
+        throw error;
+    }
+}
+
+// --- AUTHENTICATION ---
+async function handleLogin(e) {
+    e.preventDefault();
+    showLoader('Login...');
+    const email = loginForm.email.value;
+    const password = loginForm.password.value;
+    const officeName = loginForm.officeLocation.value;
+    if (!officeName) {
+        showNotification('warning', 'Lokasi Belum Dipilih', 'Silakan pilih lokasi kantor Anda.');
+        hideLoader();
+        return;
+    }
+    try {
+        const user = await apiCall({ action: 'login', email, password });
+        currentUser = user;
+        selectedOffice = officeLocations.find(o => o.nama === officeName);
+        sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+        sessionStorage.setItem('selectedOffice', JSON.stringify(selectedOffice));
+        initDashboard();
+    } catch (error) {
+        showNotification('error', 'Login Gagal', error.message);
+    } finally {
+        hideLoader();
+    }
+}
+
+function handleLogout() {
+    sessionStorage.clear();
+    localStorage.removeItem('appTheme');
+    window.location.reload();
+}
+
+// --- DASHBOARD ---
+async function initDashboard() {
+    loginPage.classList.add('hidden');
+    dashboardPage.classList.remove('hidden');
+    document.getElementById('user-name-display').textContent = currentUser.nama;
+    document.getElementById('user-role-display').textContent = currentUser.role;
+    document.getElementById('current-office-location').textContent = selectedOffice.nama;
+    if (currentUser.role === 'HR') {
+        document.getElementById('admin-menu').classList.add('hidden');
+    } else if (currentUser.role === 'User') {
+        document.getElementById('admin-menu').classList.add('hidden');
+        document.getElementById('user-menu').classList.add('hidden');
+    }
+    showLoader('Memuat Dashboard...');
+    try {
+        const [settings, offices, data] = await Promise.all([
+            apiCall({ action: 'getSettings' }),
+            apiCall({ action: 'getOffices' }),
+            apiCall({ action: 'getDashboardData', user: currentUser })
+        ]);
+        appSettings = settings;
+        officeLocations = offices;
+        attendanceData = data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        updateUIWithSettings();
+        updateLastAttendanceInfo();
+        checkAttendanceStatus();
+        initMap();
+        initChart();
+        checkLocationStatus();
+    } catch (error) {
+        console.error("Error initializing dashboard:", error);
+        showNotification('error', 'Gagal Memuat Data', error.message);
+    } finally {
+        hideLoader();
+    }
+}
+
+function updateUIWithSettings() {
+    const theme = appSettings.themeColor || 'blue';
+    applyTheme(theme);
+    localStorage.setItem('appTheme', theme);
+    document.title = appSettings.appName;
+    document.getElementById('dashboard-app-name').textContent = appSettings.appName;
+    document.getElementById('dashboard-logo').src = appSettings.logoUrl;
+}
+
+// --- ATTENDANCE PROCESS ---
+async function handleAttendance(status) {
+    showLoader('Mendapatkan Lokasi...');
+    try {
+        const position = await getCurrentPosition();
+        const spoofReason = isGpsSpoof(position);
+        if (spoofReason) {
+            await apiCall({ action: 'logGpsSpoof', data: { 
+                user: currentUser, 
+                location: {latitude: position.coords.latitude, longitude: position.coords.longitude, accuracy: position.coords.accuracy}, 
+                reason: spoofReason 
+            }});
+            showNotification('error', 'GPS Palsu Terdeteksi', 'Aplikasi mendeteksi penggunaan lokasi palsu.');
+            return;
+        }
+        const distance = calculateDistance(
+            position.coords.latitude, position.coords.longitude,
+            selectedOffice.latitude, selectedOffice.longitude
+        );
+        if (distance > selectedOffice.radius) {
+            showNotification('warning', 'Di Luar Area', 'Anda berada di luar area kantor.');
+            return;
+        }
+        showSelfieModal(status, position.coords);
+    } catch (error) {
+        showNotification('error', 'Gagal Mendapatkan Lokasi', error.message);
+    } finally {
+        hideLoader();
+    }
+}
+
+// --- GEOLOCATION & ANTI-SPOOFING ---
+function getCurrentPosition() {
+    return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+            reject(new Error('Geolocation tidak didukung oleh browser Anda.'));
+        }
+        navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true, timeout: 10000, maximumAge: 0
+        });
+    });
+}
+
+function isGpsSpoof(position) {
+    if (position.coords.accuracy < 5) {
+        return `Akurasi terlalu tinggi: ${position.coords.accuracy}m`;
+    }
+    const now = new Date().getTime();
+    if (lastPosition) {
+        const timeDiff = (now - lastPosition.timestamp) / 1000;
+        const distanceMoved = calculateDistance(
+            position.coords.latitude, position.coords.longitude,
+            lastPosition.coords.latitude, lastPosition.coords.longitude
+        );
+        const speed = (distanceMoved / timeDiff) * 3.6;
+        if (speed > 500) {
+             return `Perpindahan tidak wajar: ${speed.toFixed(0)} km/h`;
+        }
+    }
+    lastPosition = { coords: position.coords, timestamp: now };
+    return null;
+}
+
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371e3;
+    const φ1 = lat1 * Math.PI / 180;
+    const φ2 = lat2 * Math.PI / 180;
+    const Δφ = (lat2 - lat1) * Math.PI / 180;
+    const Δλ = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
+async function checkLocationStatus() {
+    try {
+        const position = await getCurrentPosition();
+        const distance = calculateDistance(
+            position.coords.latitude, position.coords.longitude,
+            selectedOffice.latitude, selectedOffice.longitude
+        );
+        const statusEl = document.getElementById('location-status');
+        const distanceEl = document.getElementById('distance-info');
+        if (distance <= selectedOffice.radius) {
+            statusEl.textContent = 'Anda berada di dalam area absensi.';
+            statusEl.className = 'text-green-600 font-semibold';
+        } else {
+            statusEl.textContent = 'Anda berada di luar area absensi.';
+            statusEl.className = 'text-red-600 font-semibold';
+        }
+        distanceEl.textContent = `Jarak dari kantor: ${distance.toFixed(0)} meter.`;
+    } catch (error) {
+        document.getElementById('location-status').textContent = 'Gagal mendeteksi lokasi.';
+        document.getElementById('location-status').className = 'text-red-600 font-semibold';
+    }
+}
+
+
+// --- SELFIE CAPTURE ---
+let videoStream = null;
+let attendanceInfo = {};
+
+async function showSelfieModal(status, location) {
+    attendanceInfo = { status, location };
+    const modal = document.getElementById('selfie-modal');
+    const video = document.getElementById('video-preview');
+    modal.classList.remove('hidden');
+    try {
+        videoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+        video.srcObject = videoStream;
+    } catch (error) {
+        showNotification('error', 'Kamera Gagal', 'Tidak bisa mengakses kamera.');
+        hideSelfieModal();
+    }
+}
+
+function hideSelfieModal() {
+    if (videoStream) {
+        videoStream.getTracks().forEach(track => track.stop());
+    }
+    document.getElementById('selfie-modal').classList.add('hidden');
+}
+
+function cancelCapture() { hideSelfieModal(); }
+
+async function captureSelfie() {
+    showLoader('Mengunggah data...');
+    const video = document.getElementById('video-preview');
+    const canvas = document.getElementById('selfie-canvas');
+    const context = canvas.getContext('2d');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const base64Photo = canvas.toDataURL('image/jpeg').split(',')[1];
+    hideSelfieModal();
+    try {
+        await apiCall({
+            action: 'recordAttendance',
+            data: {
+                user: currentUser,
+                status: attendanceInfo.status,
+                location: attendanceInfo.location,
+                photo: base64Photo,
+                officeLocation: selectedOffice.nama
+            },
+        });
+        showNotification('success', 'Berhasil', `Absen ${attendanceInfo.status} berhasil direkam.`);
+        const data = await apiCall({ action: 'getDashboardData', user: currentUser });
+        attendanceData = data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        updateLastAttendanceInfo();
+        checkAttendanceStatus();
+        refreshMap();
+        initChart();
+    } catch (error) {
+        showNotification('error', 'Gagal Absen', error.message);
+    } finally {
+        hideLoader();
+    }
+}
+
+// --- UI UPDATES & VIEWS ---
+function showView(viewId) {
+    document.querySelectorAll('.content-view').forEach(view => view.classList.add('hidden'));
+    document.getElementById(viewId).classList.remove('hidden');
+    switch(viewId) {
+        case 'users-view': loadUsersView(); break;
+        case 'attendance-data-view': loadAttendanceDataView(); break;
+        case 'settings-view': loadSettingsView(); break;
+        case 'spoof-log-view': loadSpoofLogView(); break;
+        case 'employee-locations-view': loadEmployeeLocationsView(); break;
+    }
+}
+
+function updateTime() {
+    const now = new Date();
+    document.getElementById('current-time').textContent = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    document.getElementById('current-date').textContent = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function updateLastAttendanceInfo() {
+    const infoEl = document.getElementById('last-attendance-info');
+    if (attendanceData.length > 0) {
+        const last = attendanceData[0];
+        infoEl.textContent = `Absen terakhir: ${last.status} di ${last.lokasiKantor} pada ${new Date(last.timestamp).toLocaleString('id-ID')}`;
+    } else {
+        infoEl.textContent = 'Belum ada riwayat absensi.';
+    }
+}
+
+function checkAttendanceStatus() {
+    const today = new Date().toDateString();
+    const todayCheckIn = attendanceData.find(d => new Date(d.timestamp).toDateString() === today && d.status === 'Masuk');
+    const alertEl = document.getElementById('attendance-status-alert');
+    if (!todayCheckIn) {
+        alertEl.classList.add('hidden');
+        return;
+    }
+    const checkInTime = new Date(todayCheckIn.timestamp);
+    const [hours, minutes] = selectedOffice.batasJamMasuk.split(':').map(Number);
+    const deadline = new Date(checkInTime);
+    deadline.setHours(hours, minutes, 0, 0);
+    const diffMinutes = Math.round((checkInTime - deadline) / (1000 * 60));
+    if (diffMinutes > 0) {
+        alertEl.className = 'p-4 mb-4 text-sm rounded-lg bg-red-100 text-red-800';
+        alertEl.innerHTML = `<span class="font-medium">Anda telat!</span> Anda tercatat masuk ${diffMinutes} menit lebih lambat dari jadwal.`;
+    } else {
+        alertEl.className = 'p-4 mb-4 text-sm rounded-lg bg-green-100 text-green-800';
+        alertEl.innerHTML = `<span class="font-medium">Tepat Waktu!</span> Terima kasih sudah datang tepat waktu hari ini.`;
+    }
+    alertEl.classList.remove('hidden');
+}
+
+// --- MAP & CHARTS ---
+function initMap() {
+    if (map) map.remove();
+    map = L.map('map');
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+    }).addTo(map);
+    if (currentUser.role === 'Admin') {
+        const bounds = L.latLngBounds(officeLocations.map(o => [o.latitude, o.longitude]));
+        if(bounds.isValid()) map.fitBounds(bounds.pad(0.5));
+        officeLocations.forEach(office => addOfficeToMap(office));
+    } else {
+        map.setView([selectedOffice.latitude, selectedOffice.longitude], 15);
+        addOfficeToMap(selectedOffice);
+    }
+    refreshMap();
+}
+
+function addOfficeToMap(office) {
+    L.marker([office.latitude, office.longitude], {
+        icon: L.divIcon({ className: 'fas fa-building text-blue-600 text-3xl', iconSize: [30, 30] })
+    }).addTo(map).bindPopup(`<b>${office.nama}</b>`);
+    L.circle([office.latitude, office.longitude], {
+        color: 'blue', fillColor: '#3498db', fillOpacity: 0.2, radius: office.radius
+    }).addTo(map);
+}
+
+function refreshMap() {
+    map.eachLayer(layer => {
+        if (layer instanceof L.Marker && !layer.getPopup()?.getContent().includes('<b>')) {
+            map.removeLayer(layer);
+        }
+    });
+    attendanceData.forEach(data => {
+        if(!data.latitude || !data.longitude) return;
+        const popupContent = `
+            <div class="custom-popup p-2 max-w-[200px]">
+                <img src="${data.foto_url}" alt="selfie" class="w-full h-auto rounded-md mb-2"/>
+                <b class="text-md">${data.nama}</b><br>
+                <b>Status:</b> ${data.status}<br>
+                <b>Waktu:</b> ${new Date(data.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false })}
+            </div>`;
+        const markerColor = data.status === 'Masuk' ? 'green' : 'red';
+        L.marker([data.latitude, data.longitude], {
+             icon: L.divIcon({ className: `fas fa-map-marker-alt text-${markerColor}-600 text-3xl`, iconSize: [30, 30] })
+        }).addTo(map).bindPopup(popupContent);
+    });
+}
+
+function initChart() {
+    const ctx = document.getElementById('attendanceChart').getContext('2d');
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    const dailyData = attendanceData.filter(d => new Date(d.timestamp).toDateString() === today.toDateString());
+    const weeklyData = attendanceData.filter(d => new Date(d.timestamp) >= startOfWeek);
+    const monthlyData = attendanceData.filter(d => new Date(d.timestamp) >= startOfMonth);
+    const uniqueUsersDaily = [...new Set(dailyData.map(item => item.email))].length;
+    const uniqueUsersWeekly = [...new Set(weeklyData.map(item => item.email))].length;
+    const uniqueUsersMonthly = [...new Set(monthlyData.map(item => item.email))].length;
+    if (attendanceChart) attendanceChart.destroy();
+    attendanceChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Harian', 'Mingguan', 'Bulanan'],
+            datasets: [{
+                label: 'Jumlah Karyawan Hadir',
+                data: [uniqueUsersDaily, uniqueUsersWeekly, uniqueUsersMonthly],
+                backgroundColor: 'rgba(59, 130, 246, 0.6)',
+                borderColor: 'rgba(59, 130, 246, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
+            responsive: true,
+            plugins: { title: { display: true, text: 'Statistik Kehadiran' } }
+        }
+    });
+}
+
+// --- DYNAMIC VIEW LOADERS ---
+async function loadSettingsView() {
+    const view = document.getElementById('settings-view');
+    view.innerHTML = `<div class="bg-white p-6 rounded-xl shadow-lg">Memuat pengaturan...</div>`;
+
+    const settings = await apiCall({ action: 'getSettings' });
+    const offices = await apiCall({ action: 'getOffices' });
+    
+    // Simpan data terbaru ke state global
+    appSettings = settings;
+    officeLocations = offices;
+
+    view.innerHTML = `
+        <form id="settings-form">
+            <div class="bg-white p-6 rounded-xl shadow-lg max-w-4xl mx-auto space-y-8">
+                
+                <div>
+                    <h2 class="text-2xl font-bold mb-4 border-b pb-2">Pengaturan Umum</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Nama Aplikasi</label>
+                            <input type="text" name="appName" value="${settings.appName}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">URL Logo</label>
+                            <input type="url" name="logoUrl" value="${settings.logoUrl}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700">Warna Tema</label>
+                            <select name="themeColor" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                                <option value="blue">Biru</option>
+                                <option value="green">Hijau</option>
+                                <option value="red">Merah</option>
+                                <option value="white">Putih (Default)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-4 border-b pb-2">
+                        <h2 class="text-2xl font-bold">Pengaturan Lokasi Kantor</h2>
+                        <button type="button" id="add-office-btn" class="text-white py-2 px-3 rounded-lg font-semibold btn-primary"><i class="fas fa-plus mr-2"></i>Tambah Lokasi</button>
+                    </div>
+                    <div id="office-settings-container" class="space-y-6">
+                        <!-- Konten dinamis untuk setiap kantor akan dimuat di sini -->
+                    </div>
+                </div>
+
+                <div class="pt-4">
+                    <button type="submit" class="w-full text-white py-3 px-4 rounded-md font-bold text-lg btn-primary">Simpan Semua Perubahan</button>
+                </div>
+            </div>
+        </form>
+    `;
+
+    document.querySelector('select[name="themeColor"]').value = settings.themeColor || 'blue';
+    renderOfficeSettings(offices);
+
+    document.getElementById('add-office-btn').addEventListener('click', () => {
+        const currentOfficeForms = [];
+         document.querySelectorAll('.office-form-group').forEach(group => {
+            currentOfficeForms.push({
+                nama: group.querySelector('[name="nama"]').value,
+                latitude: group.querySelector('[name="latitude"]').value,
+                longitude: group.querySelector('[name="longitude"]').value,
+                radius: group.querySelector('[name="radius"]').value,
+                batasJamMasuk: group.querySelector('[name="batasJamMasuk"]').value,
+                batasJamKeluar: group.querySelector('[name="batasJamKeluar"]').value,
+            });
+        });
+        const newOfficeData = { nama: 'Kantor Baru', latitude: 0, longitude: 0, radius: 100, batasJamMasuk: '09:00', batasJamKeluar: '17:00' };
+        renderOfficeSettings([...currentOfficeForms, newOfficeData]);
+    });
+    
+    document.getElementById('settings-form').addEventListener('submit', handleUpdateSettings);
+}
+
+function renderOfficeSettings(offices) {
+    const container = document.getElementById('office-settings-container');
+    officeLocations = offices; // Update state
+    container.innerHTML = offices.map((office, index) => `
+        <div class="office-form-group border p-4 rounded-lg bg-gray-50 relative" data-id="${index}">
+            <button type="button" class="delete-office-btn absolute -top-2 -right-2 bg-red-500 text-white rounded-full h-6 w-6 flex items-center justify-center text-xs">&times;</button>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-700">Nama Lokasi</label>
+                    <input type="text" name="nama" value="${office.nama}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm font-semibold">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Latitude</label>
+                    <input type="number" step="any" name="latitude" value="${office.latitude}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Longitude</label>
+                    <input type="number" step="any" name="longitude" value="${office.longitude}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Radius (meter)</label>
+                    <input type="number" name="radius" value="${office.radius}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Batas Jam Masuk</label>
+                    <input type="time" name="batasJamMasuk" value="${office.batasJamMasuk}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                </div>
+                 <div>
+                    <label class="block text-sm font-medium text-gray-700">Batas Jam Keluar</label>
+                    <input type="time" name="batasJamKeluar" value="${office.batasJamKeluar}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    document.querySelectorAll('.delete-office-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const group = e.target.closest('.office-form-group');
+            group.remove();
+        });
+    });
+}
+
+
+async function loadAttendanceDataView() {
+    const view = document.getElementById('attendance-data-view');
+    view.innerHTML = `<div class="bg-white p-6 rounded-xl shadow-lg">Memuat data absensi...</div>`;
+    try {
+        const allAttendance = await apiCall({ action: 'getDashboardData', user: currentUser });
+        let filteredData = [...allAttendance].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        const today = new Date().toISOString().split('T')[0];
+        const firstDayOfMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().split('T')[0];
+        view.innerHTML = `
+            <div class="bg-white p-6 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-bold mb-4">Laporan Data Absensi</h2>
+                <div class="flex flex-wrap gap-4 items-center mb-4 p-4 bg-gray-50 rounded-lg">
+                    <div>
+                        <label for="start-date-filter" class="text-sm font-medium text-gray-700">Dari Tanggal</label>
+                        <input type="date" id="start-date-filter" value="${firstDayOfMonth}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    </div>
+                    <div>
+                        <label for="end-date-filter" class="text-sm font-medium text-gray-700">Sampai Tanggal</label>
+                        <input type="date" id="end-date-filter" value="${today}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
+                    </div>
+                    <div class="self-end">
+                        <button id="download-csv-btn" class="bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 font-semibold">
+                            <i class="fas fa-download mr-2"></i>Unduh CSV
+                        </button>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Waktu</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Lokasi Kantor</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    </tr></thead><tbody id="attendance-report-body" class="bg-white divide-y divide-gray-200"></tbody></table>
+                </div>
+            </div>`;
+        const renderTable = () => {
+            const startDate = new Date(document.getElementById('start-date-filter').value);
+            startDate.setHours(0, 0, 0, 0);
+            const endDate = new Date(document.getElementById('end-date-filter').value);
+            endDate.setHours(23, 59, 59, 999);
+            filteredData = allAttendance.filter(item => {
+                const itemDate = new Date(item.timestamp);
+                return itemDate >= startDate && itemDate <= endDate;
+            }).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            const tableBody = document.getElementById('attendance-report-body');
+            tableBody.innerHTML = filteredData.length === 0 ? '<tr><td colspan="4" class="text-center py-4">Tidak ada data.</td></tr>' :
+                filteredData.map(item => `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">${new Date(item.timestamp).toLocaleString('id-ID', { hour12: false })}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">${item.nama}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">${item.lokasiKantor}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">${item.status}</td>
+                    </tr>
+                `).join('');
+        };
+        const downloadCSV = () => {
+            if (filteredData.length === 0) return showNotification('warning', 'Tidak Ada Data', 'Tidak ada data untuk diunduh.');
+            let csv = "data:text/csv;charset=utf-8,Waktu,Nama,Email,Lokasi Kantor,Status,Latitude,Longitude,URL Foto\r\n";
+            filteredData.forEach(item => {
+                csv += `"${new Date(item.timestamp).toLocaleString('id-ID', { hour12: false })}",${item.nama},${item.email},${item.lokasiKantor},${item.status},${item.latitude},${item.longitude},${item.foto_url}\r\n`;
+            });
+            const link = document.createElement("a");
+            link.setAttribute("href", encodeURI(csv));
+            link.setAttribute("download", `laporan_absensi.csv`);
+            link.click();
+        };
+        document.getElementById('start-date-filter').addEventListener('change', renderTable);
+        document.getElementById('end-date-filter').addEventListener('change', renderTable);
+        document.getElementById('download-csv-btn').addEventListener('click', downloadCSV);
+        renderTable();
+    } catch (error) {
+        view.innerHTML = `<div class="bg-white p-6 rounded-xl shadow-lg text-red-500">Gagal memuat data: ${error.message}</div>`;
+    }
+}
+
+async function loadUsersView() {
+    const view = document.getElementById('users-view');
+    view.innerHTML = `<div class="bg-white p-6 rounded-xl shadow-lg">Memuat pengguna...</div>`;
+    try {
+        const users = await apiCall({ action: 'getUsers' });
+        view.innerHTML = `
+            <div class="bg-white p-6 rounded-xl shadow-lg">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold">Manajemen User</h2>
+                    <button id="add-user-btn" class="text-white py-2 px-4 rounded-lg font-semibold btn-primary"><i class="fas fa-plus mr-2"></i>Tambah</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200"><thead class="bg-gray-50"><tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
+                    </tr></thead><tbody id="user-list-body" class="bg-white divide-y divide-gray-200"></tbody></table>
+                </div>
+            </div>`;
+        const userListBody = document.getElementById('user-list-body');
+        userListBody.innerHTML = users.map(user => `
+            <tr>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">${user.nama}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">${user.email}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">${user.role}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm space-x-2">
+                    <button class="edit-user-btn text-indigo-600 hover:text-indigo-900" data-email='${user.email}' data-user='${JSON.stringify(user)}'><i class="fas fa-edit"></i></button>
+                    <button class="delete-user-btn text-red-600 hover:text-red-900" data-email="${user.email}"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>
+        `).join('');
+        document.getElementById('add-user-btn').addEventListener('click', () => {
+            const form = document.getElementById('user-form');
+            form.reset();
+            document.getElementById('user-form-title').textContent = 'Tambah User Baru';
+            document.getElementById('original-email').value = '';
+            document.getElementById('user-email').disabled = false;
+            document.getElementById('user-password').required = true;
+            document.getElementById('user-form-modal').classList.remove('hidden');
+        });
+        document.querySelectorAll('.edit-user-btn').forEach(btn => btn.addEventListener('click', handleEditUserClick));
+        document.querySelectorAll('.delete-user-btn').forEach(btn => btn.addEventListener('click', handleDeleteUserClick));
+    } catch(error) {
+        view.innerHTML = `<div class="bg-white p-6 rounded-xl shadow-lg text-red-500">Gagal memuat data: ${error.message}</div>`;
+    }
+}
+
+async function loadSpoofLogView() {
+    const view = document.getElementById('spoof-log-view');
+    view.innerHTML = `<div class="bg-white p-6 rounded-xl shadow-lg">Memuat log...</div>`;
+    try {
+        const logs = await apiCall({ action: 'getSpoofLogs' });
+        let tableHTML = `
+            <div class="bg-white p-6 rounded-xl shadow-lg">
+                <h2 class="text-2xl font-bold mb-4">Log Deteksi GPS Spoofing</h2>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Waktu</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Koordinat</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Alasan Deteksi</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200">`;
+        if (logs && logs.length > 0) {
+            logs.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp)).forEach(log => {
+                tableHTML += `
+                    <tr>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">${new Date(log.timestamp).toLocaleString('id-ID', { hour12: false })}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">${log.email}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm">${log.latitude}, ${log.longitude} (Akurasi: ${log.accuracy}m)</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-red-600">${log.reason}</td>
+                    </tr>`;
+            });
+        } else {
+             tableHTML += `<tr><td colspan="4" class="text-center py-4">Tidak ada log deteksi.</td></tr>`;
+        }
+        tableHTML += `</tbody></table></div></div>`;
+        view.innerHTML = tableHTML;
+    } catch(error) {
+        view.innerHTML = `<div class="bg-white p-6 rounded-xl shadow-lg text-red-500">Gagal memuat log: ${error.message}</div>`;
+    }
+}
+
+async function loadEmployeeLocationsView() {
+    const view = document.getElementById('employee-locations-view');
+    view.innerHTML = `
+        <div class="bg-white p-6 rounded-xl shadow-lg">
+            <h2 class="text-2xl font-bold mb-4">Lokasi Karyawan Hari Ini</h2>
+            <div class="w-full h-[60vh]" id="employee-map"></div>
+        </div>`;
+    if (employeeMap) employeeMap.remove();
+    employeeMap = L.map('employee-map').setView([-2.548926, 118.0148634], 5); // Center of Indonesia
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(employeeMap);
+
+    showLoader('Memuat lokasi...');
+    try {
+        const locations = await apiCall({ action: 'getEmployeeLocations' });
+        if (locations.length === 0) {
+            showNotification('info', 'Info', 'Belum ada karyawan yang absen hari ini.');
+        } else {
+            const bounds = L.latLngBounds(locations.map(o => [o.latitude, o.longitude]));
+            if(bounds.isValid()) employeeMap.fitBounds(bounds.pad(0.5));
+        }
+        locations.forEach(loc => {
+            const markerColor = loc.status === 'Masuk' ? 'green' : 'red';
+            L.marker([loc.latitude, loc.longitude], {
+                 icon: L.divIcon({ className: `fas fa-map-marker-alt text-${markerColor}-600 text-3xl`, iconSize: [30, 30] })
+            }).addTo(employeeMap).bindPopup(`<b>${loc.nama}</b><br>${loc.status} di ${loc.lokasiKantor}<br>${new Date(loc.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false })}`);
+        });
+    } catch(error) {
+        showNotification('error', 'Gagal', 'Tidak dapat memuat lokasi karyawan.');
+    } finally {
+        hideLoader();
+    }
+}
+
+
+// --- FORM HANDLERS ---
+async function handleUpdateSettings(e) {
+    e.preventDefault();
+    showLoader('Menyimpan...');
+    const form = e.target;
+    const generalSettingsData = {
+        appName: form.appName.value,
+        logoUrl: form.logoUrl.value,
+        themeColor: form.themeColor.value
+    };
+    const officesData = [];
+    document.querySelectorAll('.office-form-group').forEach(group => {
+        const office = {
+            nama: group.querySelector('[name="nama"]').value,
+            latitude: group.querySelector('[name="latitude"]').value,
+            longitude: group.querySelector('[name="longitude"]').value,
+            radius: group.querySelector('[name="radius"]').value,
+            batasJamMasuk: group.querySelector('[name="batasJamMasuk"]').value,
+            batasJamKeluar: group.querySelector('[name="batasJamKeluar"]').value,
+        };
+        officesData.push(office);
+    });
+    try {
+        await Promise.all([
+            apiCall({ action: 'updateSettings', data: generalSettingsData }),
+            apiCall({ action: 'updateOffices', data: officesData })
+        ]);
+        
+        // Update local state immediately for instant UI feedback
+        appSettings = { ...appSettings, ...generalSettingsData };
+        officeLocations = officesData;
+        updateUIWithSettings();
+
+        showNotification('success', 'Berhasil', 'Semua pengaturan telah diperbarui. Halaman akan dimuat ulang untuk menerapkan semua perubahan.');
+        setTimeout(() => window.location.reload(), 2500);
+    } catch (error) {
+        showNotification('error', 'Gagal', error.message);
+    } finally {
+        hideLoader();
+    }
+}
+
+function handleEditUserClick(e) {
+    const user = JSON.parse(e.currentTarget.dataset.user);
+    const form = document.getElementById('user-form');
+    form.reset();
+    document.getElementById('user-form-title').textContent = 'Edit User';
+    document.getElementById('original-email').value = user.email;
+    document.getElementById('user-nama').value = user.nama;
+    document.getElementById('user-email').value = user.email;
+    document.getElementById('user-email').disabled = true;
+    document.getElementById('user-role').value = user.role;
+    document.getElementById('user-password').required = false;
+    document.getElementById('user-form-modal').classList.remove('hidden');
+}
+
+function handleDeleteUserClick(e) {
+    const email = e.currentTarget.dataset.email;
+    showConfirmation('Konfirmasi Hapus', `Yakin ingin menghapus user ${email}?`, async () => {
+        hideNotification();
+        showLoader('Menghapus...');
+        try {
+            await apiCall({ action: 'deleteUser', email });
+            showNotification('success', 'Berhasil', 'User telah dihapus.');
+            loadUsersView();
+        } catch (error) {
+            showNotification('error', 'Gagal', error.message);
+        } finally {
+            hideLoader();
+        }
+    });
+}
+
+async function handleUserFormSubmit(e) {
+    e.preventDefault();
+    const form = e.target;
+    const isEditing = !!form.originalEmail.value;
+    const data = {
+        nama: form.nama.value,
+        email: isEditing ? form.originalEmail.value : form.email.value,
+        password: form.password.value,
+        role: form.role.value,
+        originalEmail: form.originalEmail.value
+    };
+    showLoader(isEditing ? 'Memperbarui...' : 'Menambahkan...');
+    try {
+        await apiCall({ action: isEditing ? 'editUser' : 'addUser', data });
+        showNotification('success', 'Berhasil', 'Data user tersimpan.');
+        document.getElementById('user-form-modal').classList.add('hidden');
+        loadUsersView();
+    } catch(error) {
+        showNotification('error', 'Gagal', error.message);
+    } finally {
+        hideLoader();
+    }
+}
+
+// --- UTILITY FUNCTIONS ---
+function showLoader(text = 'Memproses...') {
+    document.getElementById('loader-text').textContent = text;
+    document.getElementById('loader-modal').classList.remove('hidden');
+}
+
+function hideLoader() {
+    document.getElementById('loader-modal').classList.add('hidden');
+}
+
+function showNotification(type, title, message, onConfirm = null) {
+    const modal = document.getElementById('notification-modal');
+    const iconEl = document.getElementById('notification-icon');
+    const buttonsContainer = document.getElementById('notification-buttons');
+    document.getElementById('notification-title').textContent = title;
+    document.getElementById('notification-message').textContent = message;
+    iconEl.innerHTML = '';
+    iconEl.className = 'mx-auto mb-4 w-12 h-12 rounded-full flex items-center justify-center text-2xl text-white';
+    const typeMap = {
+        success: { bg: 'bg-green-500', icon: 'fa-check' },
+        error: { bg: 'bg-red-500', icon: 'fa-times' },
+        warning: { bg: 'bg-yellow-500', icon: 'fa-exclamation-triangle' }
+    };
+    const { bg, icon } = typeMap[type] || { bg: 'bg-blue-500', icon: 'fa-info' };
+    iconEl.classList.add(bg);
+    iconEl.innerHTML = `<i class="fas ${icon}"></i>`;
+    buttonsContainer.innerHTML = '';
+    if (typeof onConfirm === 'function') {
+        buttonsContainer.innerHTML = `
+            <button id="confirm-cancel" class="w-full bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300">Batal</button>
+            <button id="confirm-ok" class="w-full bg-red-600 text-white py-2 px-4 rounded-lg hover:bg-red-700">Ya, Lanjutkan</button>
+        `;
+        document.getElementById('confirm-ok').onclick = onConfirm;
+        document.getElementById('confirm-cancel').onclick = hideNotification;
+    } else {
+        buttonsContainer.innerHTML = `<button id="notification-close-btn" class="w-full text-white py-2 px-4 rounded-lg btn-primary">Tutup</button>`;
+        document.getElementById('notification-close-btn').onclick = hideNotification;
+    }
+    modal.classList.remove('hidden');
+}
+
+function showConfirmation(title, message, onConfirm) {
+    showNotification('warning', title, message, onConfirm);
+}
+
+function hideNotification() {
+    document.getElementById('notification-modal').classList.add('hidden');
+}
+
+function applyTheme(theme) {
+    const themeColors = {
+        blue: { primary: '#3b82f6', hover: '#2563eb', active: '#1d4ed8' },
+        green: { primary: '#22c55e', hover: '#16a34a', active: '#15803d' },
+        red: { primary: '#ef4444', hover: '#dc2626', active: '#b91c1c' },
+        white: { primary: '#64748b', hover: '#475569', active: '#334155' }
+    };
+    const colors = themeColors[theme] || themeColors.blue;
+    const style = document.getElementById('theme-style');
+    style.innerHTML = `
+        :root {
+            --primary-color: ${colors.primary};
+            --primary-hover-color: ${colors.hover};
+            --primary-active-color: ${colors.active};
+        }
+        ${style.innerHTML.substring(style.innerHTML.indexOf('/* Custom Styles */'))}
+    `;
+}
+
+</script>
+</body>
+</html>
